@@ -1,0 +1,15 @@
+{
+  "modid": "SDK_Demo",
+  "name": "SDK_Demo（xiaoshayu）",
+  "author_list": [
+    "小鲨鱼"
+  ],
+  "description": "Provides a local HTTP API for controlling the game.",
+  "dependencies": [
+    "basemod"
+  ],
+  "version": "0.0.1",
+  "sts_version": "12-18-2022",
+  "update_json": "",
+  "jar_file": "stsmymod.jar"
+}
