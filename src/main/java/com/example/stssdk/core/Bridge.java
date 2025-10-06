@@ -1,20 +1,22 @@
 package com.example.stssdk.core;
 import com.example.stssdk.action.EndTurnAction;
-
-
 import com.example.stssdk.action.PlayCardByUuidAction;
+import com.example.stssdk.action.UsePotionAction;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.megacrit.cardcrawl.dungeons.AbstractDungeon;
 import com.megacrit.cardcrawl.characters.AbstractPlayer;
 import com.megacrit.cardcrawl.monsters.MonsterGroup;
 import com.example.stssdk.core.Serializer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * 游戏桥接器，负责与游戏核心系统交互
  * 提供获取游戏状态和执行游戏操作的方法
  */
 public class Bridge {
+    private static final Logger logger = LoggerFactory.getLogger(Bridge.class);
 
     /**
      * 获取当前游戏状态
@@ -33,8 +35,7 @@ public class Bridge {
             state.addProperty("hp", p.currentHealth);
             state.addProperty("maxHp", p.maxHealth);
 
-// 获取能量信息，使用try-catch处理不同版本可能的字段差异
-// energy: try-catch if energy field name differs by version
+            // 获取能量信息，使用try-catch处理不同版本可能的字段差异
             try {
                 state.addProperty("energy", p.energy.energy);
             } catch (Exception ex) {
@@ -63,6 +64,7 @@ public class Bridge {
             return state;
         } catch (Exception e) {
             state.addProperty("error", e.getMessage());
+            logger.error("Error getting game state", e);
             return state;
         }
     }
@@ -103,15 +105,86 @@ public class Bridge {
     /**
      * 播放指定UUID的卡牌
      * @param uuid 卡牌的唯一标识符
+     * @return 包含操作结果的JSON对象
      */
-    public void playCard(String uuid) {
-        AbstractDungeon.actionManager.addToBottom(new PlayCardByUuidAction(uuid));
+    public JsonObject playCard(String uuid) {
+        return playCard(uuid, null);
+    }
+
+    /**
+     * 播放指定UUID的卡牌，并指定目标
+     * @param uuid 卡牌的唯一标识符
+     * @param targetId 目标怪物的ID
+     * @return 包含操作结果的JSON对象
+     */
+    public JsonObject playCard(String uuid, String targetId) {
+        JsonObject result = new JsonObject();
+        try {
+            logger.info("Request to play card with UUID: {}", uuid);
+            PlayCardByUuidAction action = new PlayCardByUuidAction(uuid, targetId);
+            
+            // 因为是异步执行，我们不能立即获取结果
+            // 所以先返回排队状态，实际结果需要通过其他方式获取
+            AbstractDungeon.actionManager.addToBottom(action);
+            result.addProperty("status", "queued");
+            logger.info("Card play action queued");
+        } catch (Exception e) {
+            result.addProperty("error", e.getMessage());
+            logger.error("Error queueing card play action", e);
+        }
+        return result;
     }
 
     /**
      * 结束当前回合
+     * @return 包含操作结果的JSON对象
      */
-    public void endTurn() {
-        AbstractDungeon.actionManager.addToBottom(new EndTurnAction());
+    public JsonObject endTurn() {
+        JsonObject result = new JsonObject();
+        try {
+            logger.info("Request to end turn");
+            AbstractDungeon.actionManager.addToBottom(new EndTurnAction());
+            result.addProperty("status", "queued");
+        } catch (Exception e) {
+            result.addProperty("error", e.getMessage());
+            logger.error("Error ending turn", e);
+        }
+        return result;
+    }
+    
+    /**
+     * 使用指定ID的药水
+     * @param potionId 药水的ID
+     * @return 包含操作结果的JSON对象
+     */
+    public JsonObject usePotionById(String potionId) {
+        JsonObject result = new JsonObject();
+        try {
+            logger.info("Request to use potion by ID: {}", potionId);
+            AbstractDungeon.actionManager.addToBottom(new UsePotionAction(potionId));
+            result.addProperty("status", "queued");
+        } catch (Exception e) {
+            result.addProperty("error", e.getMessage());
+            logger.error("Error using potion by ID", e);
+        }
+        return result;
+    }
+    
+    /**
+     * 使用指定槽位的药水
+     * @param slotIndex 药水的槽位索引（从0开始）
+     * @return 包含操作结果的JSON对象
+     */
+    public JsonObject usePotionBySlot(int slotIndex) {
+        JsonObject result = new JsonObject();
+        try {
+            logger.info("Request to use potion by slot index: {}", slotIndex);
+            AbstractDungeon.actionManager.addToBottom(new UsePotionAction(slotIndex));
+            result.addProperty("status", "queued");
+        } catch (Exception e) {
+            result.addProperty("error", e.getMessage());
+            logger.error("Error using potion by slot index", e);
+        }
+        return result;
     }
 }
